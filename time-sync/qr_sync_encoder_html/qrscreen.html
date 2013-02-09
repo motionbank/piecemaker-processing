@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>QR CODE SYNC for PIECEMAKER</title>
+<script src="qrcode.js"></script>
+<style>
+	html {
+		width: 100%;
+		height: 100%;
+		padding: 0px;
+	}
+	body {
+		width: 100%;
+		height: 100%;
+		margin: 0px;
+		padding: 0px;
+		background-color: white;
+		color: black;
+		font-family: sans-serif;
+		overflow: hidden;
+	}
+	#qr-code-container
+	{
+		position: absolute;
+		top: 0px;
+		left: 0px;
+	}
+	#time-code {
+		font-weight: bold;
+		position: absolute;
+		top: 0px;
+		bottom: 0px;
+		right: 0px;
+		width: 20%;
+		padding: 0.5em;
+		font-size: 100px;
+	}
+	#time-code-content
+	{
+		white-space: pre;
+	}
+	img {
+		image-rendering: -moz-crisp-edges;
+	}
+</style>
+</head>
+<body>
+	<script>
+	
+	var ts, qrDim, loc = 0, locHalf = 1, locMax = 1;
+	var qrElement, qrImgElement, tcTxtElement;
+	var qrc;
+	var originWindow;
+	
+	window.onload = function () {
+		
+		qrElement = document.getElementById('qr-code-container');
+		qrImgElement = qrElement.children[0];
+		
+		tcTxtElement = document.getElementById('time-code-content');
+		//startQRSync();
+	}
+	
+	window.addEventListener( "message", function(e){
+		
+		originWindow = e.source;
+		
+		if ( e.data == 'exit-fs' ) {
+			
+			stopQRSync();
+			
+		} else if ( e.data == 'enter-fs' ) {
+			
+			startQRSync();
+		}
+		
+	}, false);
+	
+	// document.addEventListener( 'mousedown', function(e) {
+	// 	
+	// 	if ( originWindow ) {
+	// 		originWindow.postMessage( 'cancel-fs', '*' );
+	// 	}
+	// 	
+	// }, false);
+
+	window.addEventListener( "keydown", function(e){
+
+		if ( e.keyCode == 189 || e.keyCode == 40 ) {  // MINUS or DOWN
+			 
+			loc = 0;
+			
+			if ( locHalf <= 1 ) {
+				locHalf = 2;
+				locMax = 4;
+			} else {
+				locHalf *= locHalf;
+				locMax *= locMax;
+			}
+			
+			if ( locHalf > 4 ) {
+				locHalf = 4;
+				locMax = 16;
+			}
+			
+		} else if ( e.keyCode == 187 || e.keyCode == 38 ) {  // PLUS or UP
+			
+			loc = 0;
+			locHalf = parseInt(Math.sqrt(locHalf));
+			locMax = locHalf * locHalf;
+			
+			if ( locHalf < 1 ) {
+				locHalf = 1;
+				locMax = 1;
+			}
+		}
+		
+		resetQRDim();
+		
+		console.log( e.keyCode );
+
+	}, false);
+	
+	function resetQRDim () {
+		
+		qrDim = Math.floor( document.body.clientHeight / locHalf );
+		qrImgElement.height = qrDim;
+		
+	}
+	
+	function startQRSync () {
+	
+		resetQRDim();
+		loc = 0;
+		
+		stopQRSync();
+		nextQRCode();
+	}
+	
+	function nextQRCode () {
+		
+		var d = new Date();
+		var ds = dateString(d);
+		
+		qrc = qrcode(3,'M');
+		qrc.addData(ds);
+		qrc.make();
+		qrImgElement.setAttribute( "src", qrc.createBase64Gif(2,1) );
+		
+		qrElement.style.top  = (loc % locHalf) * qrDim+'px';
+		qrElement.style.left = parseInt(loc / locHalf) * qrDim+'px';
+		
+		tcTxtElement.textContent = ds.replace(/[^0-9]/g,"\n");
+		
+		ts = setTimeout( nextQRCode, 1000/50 );
+		loc++;
+		loc %= locMax;
+	}
+	
+	function dateString (d) {
+		return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate()    + " " + 
+			   d.getHours()    + ":" + d.getMinutes()   + ":" + d.getSeconds() + ":" + d.getMilliseconds();
+	}
+	
+	function stopQRSync () {
+		
+		clearTimeout(ts);
+	}
+	
+	</script>
+	<div id="qr-code-container">
+		<img />
+	</div>
+	<div id="time-code">
+		<div id="time-code-content">
+		</div>
+	</div>
+</body>
+</html>
